@@ -89,16 +89,24 @@ def video2images(video_path, frames_path):
 
 def video2images_ffmpeg(video_path:str,output_path:str,**ffmpeg_args):
     image_path_template = os.path.join(output_path, f"%d.jpg")
-    (
-        ffmpeg
-        .input(video_path)
-        .filter('framestep', ffmpeg_args["framestep"])
-        # .filter("scale", ffmpeg_args["resize_w"], ffmpeg_args["resize_h"])
-        .output(image_path_template,crf=0, preset='slow')
-        .overwrite_output()
-        .run()
-    )
+    stream=ffmpeg.input(video_path)
+    stream=stream.filter('framestep',ffmpeg_args["framestep"])
+    stream=stream.output(image_path_template,crf=0, preset='slow')
+    stream.run()
 
+def get_video_info(video_path:str):
+    cap = cv2.VideoCapture(video_path)
+    frame_count = int(cap.get(cv2.CAP_PROP_FRAME_COUNT))
+    fps = cap.get(cv2.CAP_PROP_FPS)
+    width = int(cap.get(cv2.CAP_PROP_FRAME_WIDTH))
+    height = int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
+    info={
+        "frame_count":frame_count,
+        "fps":fps,
+        "width":width,
+        "height":height
+    }
+    return info
 
 if __name__ == '__main__':
     # v_path="/home/king/PycharmProjects/detect_track/buffer/self/videos/bird_drone.mp4"

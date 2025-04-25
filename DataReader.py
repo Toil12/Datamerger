@@ -142,7 +142,7 @@ class DataReader:
         """
         try:
             with open(txt_path, "r", encoding="utf-8") as txt_file:
-                content = txt_file.read()
+                content = txt_file.readlines()
             return content
         except FileNotFoundError:
             print(f"The file {txt_path} was not found.")

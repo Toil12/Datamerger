@@ -5,14 +5,15 @@ import numpy as np
 from torchvision import transforms
 
 class LocalCOCO:
-    def __init__(self,data_dir:str,mode:str):
-        self.data_dir=os.path.join(data_dir,mode)
+    def __init__(self,data_dir):
+        self.data_dir=data_dir
         self.coco_dict = {"images": [],
                           "annotations": [],
                           "categorise": []
                           }
         self.image_info_initialize()
         self.annotation_info_initialize()
+
     def image_info_initialize(self):
         file_count = 1
         for video_dir in os.listdir(self.data_dir):  # video dir is like "0"
@@ -23,7 +24,7 @@ class LocalCOCO:
                 file_name = os.path.join(video_dir, image_name)
                 image_dict = {"file_name": file_name,
                               "id": file_count,
-                              "video_id": int(video_dir),
+                              "video_id":video_dir,
                               "frame_id": idx + 1}
                 self.coco_dict["images"].append(image_dict)
                 file_count += 1
