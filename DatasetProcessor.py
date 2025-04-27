@@ -123,16 +123,19 @@ class DatasetProcessor():
                 tools.video2images_ffmpeg(video_path,images_output_dir_path,**ffmpeg_dict)
             else:
                 print(f"Image Refresh tag is False, {dataset_path} skip image processing.")
-
-            # Put all annotations in a dict
             if anno_re_tag:
                 anno_all_dict={}
                 anno = DataReader.get_txt_file(anno_path)
+                # Put all annotations in a dict
                 for line in anno:
+                    # Formed in: time_layer: 1798 detections: (y_min,x_min,y_max,x_max)
                     frame = int(re.search(r"time_layer: (\d+)", line).group(1))
                     # Get all bounding boxes in the line
                     detections = re.findall(r"\((\d+), (\d+), (\d+), (\d+)\)", line)
                     detections = [tuple(map(int, box)) for box in detections]
+                    detections = [
+                        (box[1], box[0], box[3] - box[1], box[2] - box[0]) for box in detections
+                    ]
                     anno_all_dict[frame]=detections
 
                 for idx, img in enumerate(sorted(os.listdir(images_output_dir_path), key=lambda x: int(x.split(".")[0]))):
@@ -153,28 +156,135 @@ class DatasetProcessor():
                         anno_dict = {
                             "id": int(anno_id_count),
                             "image_id": image_dict["id"],
-                            "category_id": 1,
+                            "category_id": 0,
                             "bbox":list(bboxes) ,
                             "iscrowd": 0
                         }
                         anno_id_count += 1
                         coco_anno_dict["annotations"].append(anno_dict)
 
+                coco_anno_dict["categories"].append({
+                    "id": 0,
+                    "name": "drone",
+                })
                 with open(os.path.join(anno_output_dir_path, "annotations.json"), "w") as f:
                     json.dump(coco_anno_dict, f, indent=4)
             else:
                 print(f"Annotation refresh tag is False, {dataset_path} skip anno processing.")
-            # Formed in: time_layer: 1798 detections: (y_min,x_min,y_max,x_max)
-
 
     @staticmethod
-    def third_anti_uav2coco(dataset_path:str):
-        pass
+    def video_mode_1(dataset_path:str,
+                     video_dir_in_root:str,
+                     anno_dir_in_root:str,
+                     anno_suffix:str,
+                     img_re_tag=False,
+                     anno_re_tag=True,
+                     ffmpeg_dict=None):
+        """
+        Process purdue dataset to COCO format.
+        Args:
+            dataset_path: dataset path
+            video_dir_in_root: video directory in root
+            anno_dir_in_root: annotation directory in root
+            anno_suffix: annotation suffix
+            img_re_tag: if True, process images.
+            anno_re_tag: if True, process annotations.
+            ffmpeg_dict: ffmpeg parameters
+        Returns:
+            No return value.
+        """
+        if ffmpeg_dict is None:
+            ffmpeg_dict = DEFAULT_FFMPEG_DICT
+        images_output_root_path, anno_output_root_path,dataset_type= DatasetProcessor.initialization(dataset_path)
+        videos_root_path=os.path.join(dataset_path,video_dir_in_root)
+        anno_root_path=os.path.join(dataset_path,anno_dir_in_root)
 
-    @staticmethod
-    def usc2coco(dataset_path:str):
-        pass
+        _,videos_list=DataReader.get_media_list(videos_root_path)
+        videos_list=sorted(videos_list,key=lambda x:int(x.split(".")[0].split("_")[-1]))
+
+        #Start loop for each video
+        coco_anno_dict = {
+            "images": [],
+            "annotations": [],
+            "categories": []
+        }
+        img_id_count=1
+        anno_id_count=1
+
+        for video in videos_list:
+            video_name=video.split(".")[0]
+
+            video_path=os.path.join(videos_root_path,video)
+            anno_path=os.path.join(anno_root_path,video_name+anno_suffix)
+
+            images_output_dir_path=os.path.join(images_output_root_path,video_name)
+            anno_output_dir_path=os.path.join(anno_output_root_path,video_name)
+
+            tools.create_dir_if_not_exists(images_output_dir_path)
+            tools.create_dir_if_not_exists(anno_output_dir_path)
+
+            video_info=tools.get_video_info(video_path)
+
+            if img_re_tag:
+                tools.video2images_ffmpeg(video_path,images_output_dir_path,**ffmpeg_dict)
+            else:
+                print(f"Image Refresh tag is False, {dataset_path} skip image processing.")
+            if anno_re_tag:
+                anno_all_dict={}
+                anno = DataReader.get_txt_file(anno_path)
+                # Put all annotations in a dict
+                for line in anno:
+                    # Formed in: time_layer: 1798 detections: (y_min,x_min,y_max,x_max)
+                    frame = int(re.search(r"time_layer: (\d+)", line).group(1))
+                    # Get all bounding boxes in the line
+                    detections = re.findall(r"\((\d+), (\d+), (\d+), (\d+)\)", line)
+                    detections = [tuple(map(int, box)) for box in detections]
+                    detections = [
+                        (box[1], box[0], box[3] - box[1], box[2] - box[0]) for box in detections
+                    ]
+                    anno_all_dict[frame]=detections
+
+                for idx, img in enumerate(sorted(os.listdir(images_output_dir_path), key=lambda x: int(x.split(".")[0]))):
+                    # Add image info to the annotations file.
+                    image_dict = {
+                        "id": int(img_id_count),
+                        "file_path": os.path.join(video_name, img),
+                        "width": video_info["width"],
+                        "height": video_info["height"],
+                        "frame_id": int(img.split(".")[0]),
+                        "video_id": video_name,
+                        "data_type": dataset_type
+                    }
+                    coco_anno_dict["images"].append(image_dict)
+                    img_id_count += 1
+
+                    for bboxes in anno_all_dict[image_dict["frame_id"]]:
+                        anno_dict = {
+                            "id": int(anno_id_count),
+                            "image_id": image_dict["id"],
+                            "category_id": 0,
+                            "bbox":list(bboxes) ,
+                            "iscrowd": 0
+                        }
+                        anno_id_count += 1
+                        coco_anno_dict["annotations"].append(anno_dict)
+
+                coco_anno_dict["categories"].append({
+                    "id": 0,
+                    "name": "drone",
+                })
+                with open(os.path.join(anno_output_dir_path, "annotations.json"), "w") as f:
+                    json.dump(coco_anno_dict, f, indent=4)
+            else:
+                print(f"Annotation refresh tag is False, {dataset_path} skip anno processing.")
+
+
 
 if __name__ == '__main__':
     dataset_path="/home/king/PycharmProjects/DataMerger/Data/PURDUE_rgb"
-    DatasetProcessor.purdue2coco(dataset_path,False,True)
+    DatasetProcessor.video_mode_1(dataset_path,
+                                  video_dir_in_root=os.path.join("Videos","Videos"),
+                                  anno_dir_in_root=os.path.join("Video_Annotation","Video_Annotation"),
+                                  anno_suffix="_gt.txt",
+                                  img_re_tag=True,
+                                  anno_re_tag=True)

@@ -43,24 +43,6 @@ class DataProcessor:
             except Exception as e:
                 print(f"When reading existing file, meet error {e}")
 
-    # def annotation_structure_initialize(self,update_tag=False):
-    #     """
-    #     Create annotation info directory for each dataset.
-    #     Args:
-    #         update_tag: if True, update annotation info directory.
-    #     Returns:
-    #         No return value.
-    #     """
-    #     for dataset in self.dataset_list:
-    #         dataset_path=os.path.join(self.root_dir,dataset)
-    #         try:
-    #             if update_tag:
-    #                 shutil.rmtree(os.path.join(dataset_path,self.anno_info_dir))
-    #             if self.anno_info_dir not in os.listdir(dataset_path):
-    #                 os.makedirs(os.path.join(dataset_path,self.anno_info_dir))
-    #         except Exception as e:
-    #             print(f"An error occurred while processing {e}")
-
     def build_annotation(self):
         for dataset in self.dataset_list:
             dataset_path=os.path.join(self.root_dir,dataset)
