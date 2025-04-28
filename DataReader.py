@@ -7,15 +7,14 @@ import xml.etree.ElementTree as ET
 
 SUPPORT_IMAGE_FORMAT = (".jpg", ".jpeg", ".png", ".bmp")
 SUPPORT_VIDEO_FORMAT = (".mp4", ".avi", ".mkv", ".mov")
-TYPE_SUFFIX=("_rgb","_thermal","_mix")
+TYPE_SUFFIX = ("_rgb", "_thermal", "_mix")
 
 class DataReader:
     """
     Get video list and all images of each video.
-    Args:
-        root_dir: root directory of dataset
     """
-    def __init__(self, root_dir:str,update_tag=False):
+
+    def __init__(self):
         pass
 
     @staticmethod
@@ -34,6 +33,7 @@ class DataReader:
             if not d.endswith(TYPE_SUFFIX):
                 raise TypeError(f"{d} is not with correct suffix.")
             video_dir_list.append(d)
+        print(f"Get video directories {len(video_dir_list)}, start processing")
         return video_dir_list
 
     @staticmethod
@@ -54,8 +54,11 @@ class DataReader:
                     img_list.append(f)
                 elif f.endswith(SUPPORT_VIDEO_FORMAT):
                     video_list.append(f)
+                else:
+                    print(f"{f} is not a media file.")
             else:
-                continue
+                print(f"{f} is not a file.")
+        print(f"Get images {len(img_list)}, videos {len(video_list)}, start processing")
         return img_list, video_list
 
     @staticmethod
@@ -150,6 +153,14 @@ class DataReader:
         except Exception as e:
             print(f"An unexpected error occurred while reading {txt_path}: {e}")
             return None
+
+    @staticmethod
+    def support_video_format()->tuple:
+        return SUPPORT_VIDEO_FORMAT
+
+    @staticmethod
+    def support_image_format()->tuple:
+        return SUPPORT_IMAGE_FORMAT
 
 if __name__ == '__main__':
     root_pth="Data"

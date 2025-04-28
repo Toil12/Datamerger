@@ -4,6 +4,8 @@ import torch
 import cv2
 import ffmpeg
 
+from DataReader import DataReader
+
 
 def list_and_sort_files(folder_path):
     files = os.listdir(folder_path)
@@ -107,6 +109,24 @@ def get_video_info(video_path:str):
         "height":height
     }
     return info
+
+def get_image_info(image_path:str):
+    img = cv2.imread(image_path)
+    height, width, channels = img.shape
+    info={
+        "width":int(width),
+        "height":int(height),
+        "channels":int(channels)
+    }
+    return info
+
+def image_copy(original_path:str,output_path:str):
+    # if not os.path.exists(output_path):
+    #     os.mkdir(output_path)
+    # else:
+    #     clean_create_dir_files(output_path)
+    if original_path.endswith(DataReader.support_image_format()):
+        shutil.copy(original_path,output_path)
 
 if __name__ == '__main__':
     # v_path="/home/king/PycharmProjects/detect_track/buffer/self/videos/bird_drone.mp4"
