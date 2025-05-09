@@ -21,12 +21,18 @@ class Dataset:
         # For video or images data
         self.media_dir_in_root=kwargs.get("media_dir_in_root","videos")
         self.anno_dir_in_root=kwargs.get("anno_dir_in_root","annotations")
+        self.anno_fixed_name=kwargs.get("anno_fixed_name","anno.txt")
         self.anno_suffix=kwargs.get("anno_suffix",".txt")
 
         self.extra_info=kwargs
 
-        self.media_root_path=os.path.join(dataset_path,self.media_dir_in_root)
-        self.anno_root_path=os.path.join(dataset_path,self.anno_dir_in_root)
+        if isinstance(self.media_dir_in_root,list):
+        #TODO get the correct media output
+            self.media_root_path=[os.path.join(dataset_path,media_dir) for media_dir in self.media_dir_in_root]
+            self.anno_root_path=[os.path.join(dataset_path,anno_dir) for anno_dir in self.anno_dir_in_root]
+        else:
+            self.media_root_path=os.path.join(dataset_path,self.media_dir_in_root)
+            self.anno_root_path=os.path.join(dataset_path,self.anno_dir_in_root)
 
         self.initialization()
 
@@ -49,3 +55,9 @@ class Dataset:
         else:
             tools.create_dir_if_not_exists(self.anno_output_root_path)
 
+    def reset_coco(self):
+        self.coco_anno_dict = {
+            "images": [],
+            "annotations": [],
+            "categories": []
+        }

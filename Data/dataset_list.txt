@@ -4,9 +4,7 @@ Anti-UAV-RGBT_mix
 Anti-UAV410_thermal
 Jet-Fly_rgb
 Flight Dynamics-Based Recovery of a UAV Trajectory Using Ground Cameras_rgb
-10.11922sciencedb.902_thermal
-Drone-detection-dataset_mix
-USC_mix
+youtube_rgb
 3rd_Anti-UAV_train_val_thermal
 Dataset_UAV123_rgb
 ARD-MAV_rgb

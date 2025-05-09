@@ -1,12 +1,10 @@
-import json
+import scipy
 
-json_path="/home/king/PycharmProjects/DataMerger/Data/3rd_Anti-UAV_train_val_thermal/validation.json"
-
-
-with open(json_path, "r") as js_file:
-    data = json.load(js_file)
-
-for key,value in data.items():
-    print(key)
-    print(len(value))
+path= "/home/king/PycharmProjects/DataMerger/Data/youtube_rgb/image&label/1/anotation.mat"
+data=scipy.io.loadmat(path)
+for k,v in data.items():
+    print(k)
+    print(v)
+    if k=="box":
+        print(len(v))
 

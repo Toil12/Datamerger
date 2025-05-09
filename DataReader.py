@@ -6,7 +6,7 @@ import json
 import xml.etree.ElementTree as ET
 
 SUPPORT_IMAGE_FORMAT = (".jpg", ".jpeg", ".png", ".bmp")
-SUPPORT_VIDEO_FORMAT = (".mp4", ".avi", ".mkv", ".mov")
+SUPPORT_VIDEO_FORMAT = (".mp4", ".avi", ".mkv", ".mov",".avi")
 TYPE_SUFFIX = ("_rgb", "_thermal", "_mix")
 
 class DataReader:
@@ -18,7 +18,7 @@ class DataReader:
         pass
 
     @staticmethod
-    def get_video_dir_list(root_dir_path:str)->[]:
+    def get_media_dir_list(root_dir_path:str)->[]:
         """
         Get all video directories in a root directory.
         Args:
@@ -26,15 +26,14 @@ class DataReader:
         Returns:
             video_dir_list: list of video directories
         """
-        video_dir_list = []
+        media_dir_list = []
         for d in os.listdir(root_dir_path): # list all directories in root_dir
             if not os.path.isdir(os.path.join(root_dir_path, d)):
                 continue
-            if not d.endswith(TYPE_SUFFIX):
-                raise TypeError(f"{d} is not with correct suffix.")
-            video_dir_list.append(d)
-        print(f"Get video directories {len(video_dir_list)}, start processing")
-        return video_dir_list
+            else:
+                media_dir_list.append(d)
+        print(f"Get media directories {len(media_dir_list)}, start processing")
+        return media_dir_list
 
     @staticmethod
     def get_media_list(dir_path:str):
@@ -54,10 +53,8 @@ class DataReader:
                     img_list.append(f)
                 elif f.endswith(SUPPORT_VIDEO_FORMAT):
                     video_list.append(f)
-                else:
-                    print(f"{f} is not a media file.")
             else:
-                print(f"{f} is not a file.")
+                pass
         print(f"Get images {len(img_list)}, videos {len(video_list)}, start processing")
         return img_list, video_list
 
