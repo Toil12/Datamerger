@@ -4,6 +4,7 @@ import shutil
 import argparse
 import json
 import xml.etree.ElementTree as ET
+import pandas as pd
 
 SUPPORT_IMAGE_FORMAT = (".jpg", ".jpeg", ".png", ".bmp")
 SUPPORT_VIDEO_FORMAT = (".mp4", ".avi", ".mkv", ".mov",".avi")
@@ -150,6 +151,27 @@ class DataReader:
         except Exception as e:
             print(f"An unexpected error occurred while reading {txt_path}: {e}")
             return None
+
+    @staticmethod
+    def get_csv_file(csv_path:str,header=None):
+        """
+        Read a csv file and return its content as a list.
+        Args:
+            csv_path (str): The path to the csv file.
+        Returns:
+            list: The content of the csv file.
+            None: If the file is not found or an error occurs.
+        """
+        try:
+            data = pd.read_csv(csv_path,header=header)
+            return data
+        except FileNotFoundError:
+            print(f"The file {csv_path} was not found.")
+            return None
+        except Exception as e:
+            print(f"An unexpected error occurred while reading {csv_path}: {e}")
+            return None
+
 
     @staticmethod
     def support_video_format()->tuple:

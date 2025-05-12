@@ -9,5 +9,4 @@ youtube_rgb
 Dataset_UAV123_rgb
 ARD-MAV_rgb
 Drone-Dataset(UAV)_rgb
-10.11922sciencedb.j00001.00231_thermal
 Midgard_rgb
