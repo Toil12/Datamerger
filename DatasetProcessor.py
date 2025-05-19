@@ -1,6 +1,7 @@
 import time
 
 import pandas
+import argparse
 from jupyter_core.migrate import migrate_dir
 
 from DataReader import DataReader
@@ -74,16 +75,13 @@ class DatasetProcessor():
         if image_single_dir:
             images_output_dir_path = dataset_object.images_output_root_path
             anno_output_dir_path = dataset_object.anno_output_root_path
-        # elif anno_direct_dir_path is not None:
-        #     images_output_dir_path = os.path.join(dataset_object.images_output_root_path, os.path.basename(media_direct_dir_path))
-        #     anno_output_dir_path = os.path.join(dataset_object.anno_output_root_path, os.path.basename(anno_direct_dir_path))
-        #     tools.create_dir_if_not_exists(images_output_dir_path)
-        #     tools.create_dir_if_not_exists(anno_output_dir_path)
+
         else:
             images_output_dir_path = os.path.join(dataset_object.images_output_root_path, media_name)
             anno_output_dir_path = os.path.join(dataset_object.anno_output_root_path, media_name)
-            tools.create_dir_if_not_exists(images_output_dir_path)
-            tools.create_dir_if_not_exists(anno_output_dir_path)
+            # tools.create_dir_if_not_exists(images_output_dir_path)
+            # tools.create_dir_if_not_exists(anno_output_dir_path)
+
 
 
         if media.endswith(DataReader.support_video_format()):
@@ -131,6 +129,7 @@ class DatasetProcessor():
             return DatasetProcessor.drone_dataset_uav_rgb_anno_processor(anno, info, mode, kwargs["idx"])
         elif dataset_name == "midgard_rgb":
             return DatasetProcessor.midgard_rgb_anno_processor(anno, info, mode, kwargs["idx"])
+        return None
 
     @staticmethod
     def build_annotation(dataset_path:str,
@@ -160,6 +159,8 @@ class DatasetProcessor():
         anno_id_count=1
         for video in videos_list:
             video_name,video_path, anno_path, images_output_dir_path, anno_output_dir_path, video_info=DatasetProcessor.out_put_initialization(dataset_object,video)
+            tools.create_dir_if_not_exists(images_output_dir_path)
+            tools.create_dir_if_not_exists(anno_output_dir_path)
             # Refresh the video if necessary
             if dataset_object.image_refresh_tag:
                 tools.video2images_ffmpeg(video_path,images_output_dir_path,**ffmpeg_dict)
@@ -175,7 +176,7 @@ class DatasetProcessor():
                     # Add image info to the annotations file.
                     image_dict = {
                         "id": int(img_id_count),
-                        "file_path": os.path.join(video_name, img),
+                        "file_path": img,
                         "width": video_info["width"],
                         "height": video_info["height"],
                         "frame_id": int(img.split(".")[0]),
@@ -244,9 +245,18 @@ class DatasetProcessor():
         anno_output_dir_path = ""
         #TODO continue the change
         for idx,image in enumerate(images_list):
-            image_name, image_path, anno_path, images_output_dir_path, anno_output_dir_path, image_info = DatasetProcessor.out_put_initialization(
+            image_name, image_path, anno_path, _, _, image_info = DatasetProcessor.out_put_initialization(
                 dataset_object, image,image_single_dir=True)
             # Refresh the images if necessary
+            images_output_dir_path = os.path.join(
+                dataset_object.images_output_root_path,
+                "DroneTestDataset"
+            )
+            anno_output_dir_path = os.path.join(
+                dataset_object.anno_output_root_path,
+                "DroneTestDataset")
+            tools.create_dir_if_not_exists(images_output_dir_path)
+            tools.create_dir_if_not_exists(anno_output_dir_path)
             if dataset_object.image_refresh_tag:
                 tools.image_copy(image_path, images_output_dir_path)
             else:
@@ -329,6 +339,7 @@ class DatasetProcessor():
             ffmpeg_dict = DEFAULT_FFMPEG_DICT
         for media_root_dir in dataset_object.media_root_path:
             media_dir_list = DataReader.get_media_dir_list(media_root_dir)
+
             for media_dir in media_dir_list:
                 anno_dir = media_dir
                 anno_direct_dir_path=os.path.join(media_root_dir,anno_dir)
@@ -336,29 +347,28 @@ class DatasetProcessor():
                 _, videos_list = DataReader.get_media_list(media_direct_dir_path)
                 videos_list = sorted(videos_list)
                 # Start loop for each video
-                img_id_count = 1
-                anno_id_count = 1
-                #
                 for video in videos_list:
+                    img_id_count = 1
+                    anno_id_count = 1
                     video_name, video_path, anno_path, _, _, video_info = DatasetProcessor.out_put_initialization(
-                        dataset_object=dataset_object, media=video, media_direct_dir_path=media_direct_dir_path,
+                        dataset_object=dataset_object,
+                        media=video,
+                        media_direct_dir_path=media_direct_dir_path,
                         anno_direct_dir_path=anno_direct_dir_path)
                     images_output_dir_path=os.path.join(
                         dataset_object.images_output_root_path,
-                        media_dir,
-                        video_name
+                        f"{media_dir}_{video_name}",
+
                     )
                     anno_output_dir_path = os.path.join(
                         dataset_object.anno_output_root_path,
-                        media_dir,
-                        video_name
+                        f"{anno_dir}_{video_name}"
                     )
                     tools.create_dir_if_not_exists(images_output_dir_path)
                     tools.create_dir_if_not_exists(anno_output_dir_path)
 
                     # Refresh the video if necessary
                     if dataset_object.image_refresh_tag:
-                        pass
                         tools.video2images_ffmpeg(video_path, images_output_dir_path, **ffmpeg_dict)
                     else:
                         print(f"Image Refresh tag is False, {dataset_path} skip image processing.")
@@ -372,7 +382,7 @@ class DatasetProcessor():
                             # Add image info to the annotations file.
                             image_dict = {
                                 "id": int(img_id_count),
-                                "file_path": os.path.join(video_name, img),
+                                "file_path": os.path.join(images_output_dir_path, img),
                                 "width": video_info["width"],
                                 "height": video_info["height"],
                                 "frame_id": int(img.split(".")[0]),
@@ -381,9 +391,9 @@ class DatasetProcessor():
                             }
                             dataset_object.coco_anno_dict["images"].append(image_dict)
                             img_id_count += 1
-
                             if image_dict["frame_id"] not in anno_all_dict.keys():
                                 continue
+                            # print(image_dict["frame_id"],len(anno_all_dict[image_dict["frame_id"]]))
                             for bboxes in anno_all_dict[image_dict["frame_id"]]:
                                 anno_dict = {
                                     "id": int(anno_id_count),
@@ -408,25 +418,21 @@ class DatasetProcessor():
     @staticmethod
     def anti_uav_rgbt_mix_anno_processor(anno,info:dict,mode:str="pixel") -> dict:
         results = {}
-        detections=[]
+
         frame_exist_list=anno["exist"]
         rects_list=anno["gt_rect"]
-
         for idx,existence in enumerate(frame_exist_list):
             frame=idx+1
-            rect = rects_list[idx]
             if not existence:
                 continue
             else:
+                rect = rects_list[idx]
                 xmin=rect[0]
                 ymin=rect[1]
                 w=rect[2]
                 h=rect[3]
                 d=(int(xmin),int(ymin),w,h)
-                detections.append(
-                    DatasetProcessor.output_form(d,info["width"],info["height"],mode)
-                )
-                results[frame] = detections
+                results[frame] = [DatasetProcessor.output_form(d,info["width"],info["height"],mode)]
         return results
 
     @staticmethod
@@ -712,7 +718,7 @@ class DatasetProcessor():
                     # Add image info to the annotations file.
                     image_dict = {
                         "id": int(img_id_count),
-                        "file_path": os.path.join(video_name, img),
+                        "file_path": img,
                         "width": video_info["width"],
                         "height": video_info["height"],
                         "frame_id": int(img.split(".")[0]),
@@ -1153,6 +1159,8 @@ class DatasetProcessor():
                 dataset_object, video)
             anno_dir = video_name
             anno_path = os.path.join(dataset_object.anno_root_path, anno_dir)
+            tools.create_dir_if_not_exists(images_output_dir_path)
+            tools.create_dir_if_not_exists(anno_output_dir_path)
             # Refresh the video if necessary
             if dataset_object.image_refresh_tag:
                 tools.video2images_ffmpeg(video_path, images_output_dir_path, **ffmpeg_dict)
@@ -1169,7 +1177,7 @@ class DatasetProcessor():
                     # Add image info to the annotations file.
                     image_dict = {
                         "id": int(img_id_count),
-                        "file_path": os.path.join(video_name, img),
+                        "file_path": img,
                         "width": video_info["width"],
                         "height": video_info["height"],
                         "frame_id": int(img.split(".")[0]),
@@ -1486,10 +1494,10 @@ class DatasetProcessor():
         # Formed in: time_layer: 1798 detections: (y_min,x_min,y_max,x_max)
         for i in range(len(anno)):
             row=anno.iloc[i]
-            xmin = float(row[1])
-            ymin = float(row[2])
-            w = float(row[3])
-            h = float(row[4])
+            xmin = int(row[1])
+            ymin = int(row[2])
+            w = int(row[3])
+            h = int(row[4])
             detections.append(
                 DatasetProcessor.output_form((xmin, ymin, w, h), info["width"], info["height"], mode)
             )
@@ -1500,8 +1508,11 @@ class DatasetProcessor():
 
 if __name__ == '__main__':
     start_time=time.time()
+    parser=argparse.ArgumentParser(description="Merger inputs config")
+    parser.add_argument("--dataset-name",default="purdue_rgb")
+    args=parser.parse_args()
 
-    test_dataset="midgard_rgb"
+    test_dataset=args.dataset_name
 
     if test_dataset=="purdue_rgb":
         dataset_path="/home/king/PycharmProjects/DataMerger/Data/PURDUE_rgb"

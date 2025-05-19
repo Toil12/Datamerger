@@ -4,6 +4,7 @@ import torch
 import cv2
 import ffmpeg
 
+import tools
 from DataReader import DataReader
 
 
@@ -135,9 +136,14 @@ if __name__ == '__main__':
 
     ffmpeg_dict={
         "framestep": 1,
-        "resize_w": 640,
-        "resize_h": 640
+        "resize_w": 1280,
+        "resize_h": 720
     }
-    output_path="results"
-    video_path="bee.mp4"
+    output_root="results"
+    video_path="transform_video2.mp4"
+    output_path=os.path.join(output_root,video_path.split(".")[0])
+    tools.clean_create_dir_files(output_path)
+    tools.create_dir_if_not_exists(output_path)
     video2images_ffmpeg(video_path,output_path,**ffmpeg_dict)
+
+
