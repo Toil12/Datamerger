@@ -68,23 +68,23 @@ class DataProcessor:
         category_tag=False
         key_mapping={"file_path":"file_name"}
 
-        for dataset in self.dataset_list:#["PURDUE_rgb","Jet-Fly_rgb"]:
+        for dataset in ["PURDUE_rgb","Jet-Fly_rgb"]:
             d_start_time=time.time()
             dataset_path=os.path.join(self.root_dir,dataset)
             anno_root_dir_path=os.path.join(dataset_path,"annotations_coco")
             media_root_dir_path=os.path.join(dataset_path,"images_coco")
             anno_dir_list=os.listdir(anno_root_dir_path)
+
+            # Start from the annotations file
             for anno_dir in anno_dir_list:
                 anno_path=os.path.join(anno_root_dir_path,anno_dir,"annotations.json")
-                # print(anno_path)
                 with open(anno_path) as f:
                     anno=json.load(f)
-                # Image 'file_path' to 'file_name'
-
+                # Add categories once
                 if not category_tag:
                     self.results_summary_json["categories"]=anno["categories"]
                     category_tag=True
-                #TODO check the annot
+                # Image 'file_path' to 'file_name'
                 for img in anno["images"]:
                     img = {key_mapping.get(k, k): v
                             for k, v in img.items()
@@ -95,12 +95,10 @@ class DataProcessor:
                         raise TypeError(f"{k} is wrong path")
                     img["video_id"]=os.path.join(dataset,anno_dir)
                     img["related_anno"] =[]
-                    #
+                    # To find and set the new image id
                     old_img_id=copy.deepcopy(img["id"])
                     new_img_id=img_id
                     img["id"]=new_img_id
-
-
                     #
                     searched_tag=False
                     for anno_c in anno["annotations"]:
@@ -108,7 +106,14 @@ class DataProcessor:
                             anno_c["image_id"]=new_img_id
                             anno_c["id"]=anno_id
                             anno_c["bbox"]=list(map(int,anno_c["bbox"]))
-                            if anno_c["bbox"]==[0,0,0,0]:
+                            if len(anno_c["bbox"])==0:
+                                raise ValueError(img["file_name"]," should not be empty")
+                            if any(c>max(img["width"],img["height"]) for c in anno_c["bbox"]):
+                                position=anno_c["bbox"]
+                                raise ValueError(f"{position} with oversized position")
+                            # Delete the empty annotations
+                            # TODO cheche this filter
+                            if anno_c["bbox"]==[0,0,0,0] or anno_c["bbox"]==[]:
                                 continue
                             img["related_anno"].append(anno_id)
                             self.results_summary_json["annotations"].append(anno_c)
@@ -118,6 +123,7 @@ class DataProcessor:
                             break
                         else:
                             continue
+                    # If not found, skip this image
                     if not searched_tag:
                         continue
                     else:

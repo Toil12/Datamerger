@@ -36,10 +36,10 @@ class DatasetProcessor():
     @staticmethod
     def output_form(detection:tuple,original_w:int,original_h:int,mode:str):
         if mode=="pixel":
-            if detection[0]<1:
+            if all(x<=1 for x in detection):
                 return detection[0] * original_w, detection[1] * original_h, detection[2] * original_w, detection[3] * original_h
         elif mode=="ratio":
-            if detection[0]>=1:
+            if all(x>=1 for x in detection):
                 return [detection[0]/original_w,detection[1]/original_h,detection[2]/original_w,detection[3]/original_h]
         return detection
 
@@ -183,17 +183,24 @@ class DatasetProcessor():
                         "video_id": video_name,
                         "data_type":dataset_object.dataset_type
                     }
-                    dataset_object.coco_anno_dict["images"].append(image_dict)
-                    img_id_count += 1
 
                     if image_dict["frame_id"] not in anno_all_dict.keys():
                         continue
-                    for bboxes in anno_all_dict[image_dict["frame_id"]]:
+                    else:
+                        dataset_object.coco_anno_dict["images"].append(image_dict)
+                        img_id_count += 1
+
+
+                    for bbox in anno_all_dict[image_dict["frame_id"]]:
+                        if bbox[0]>video_info["width"] or bbox[1]>video_info["height"] or any(x<0 for x in bbox):
+                            print(image_dict["frame_id"],bbox,video,img,video_info["width"],video_info["height"])
+                            raise ValueError("Box parameters are wrong")
+
                         anno_dict = {
                             "id": int(anno_id_count),
                             "image_id": image_dict["id"],
                             "category_id": 0,
-                            "bbox":list(bboxes) ,
+                            "bbox":list(bbox) ,
                             "iscrowd": 0
                         }
                         anno_id_count += 1
@@ -212,15 +219,20 @@ class DatasetProcessor():
     @staticmethod
     def purdue_rgb_anno_processor(anno:list,info:dict,mode:str)->dict:
         results={}
+
         for line in anno:
             # Formed in: time_layer: 1798 detections: (y_min,x_min,y_max,x_max)
+            detections = []
             frame = int(re.search(r"time_layer: (\d+)", line).group(1))
             # Get all bounding boxes in the line
-            detections = re.findall(r"\((\d+), (\d+), (\d+), (\d+)\)", line)
-            detections = [tuple(map(int, box)) for box in detections]
-            detections = [
-                DatasetProcessor.output_form((box[1], box[0], box[3] - box[1], box[2] - box[0]),info["width"],info["height"],mode) for box in detections
-            ]
+            ds = re.findall(r"\((\d+), (\d+), (\d+), (\d+)\)", line)
+            if len(ds)==0:
+                continue
+            else:
+                for box in ds:
+                    d= list(map(int,box))
+                    d=(d[1],d[0],d[3]-d[1],d[2]-d[0])
+                    detections.append(DatasetProcessor.output_form(d,info["width"],info["height"],mode))
             results[frame] = detections
         return results
 
@@ -636,8 +648,8 @@ class DatasetProcessor():
                         }
                         anno_id_count += 1
                         dataset_object.coco_anno_dict["annotations"].append(anno_dict)
-                    else:
-                        print(f"Annotation refresh tag is False, {dataset_path} skip anno processing.")
+                else:
+                    print(f"Annotation refresh tag is False, {dataset_path} skip anno processing.")
             # Append category information
             dataset_object.coco_anno_dict["categories"].append({
                 "id": 0,
@@ -652,7 +664,7 @@ class DatasetProcessor():
         results = {}
         detections = []
         # Formed in: time_layer: 1798 detections: (y_min,x_min,y_max,x_max)
-        frame = anno.find("filename").text.split(".")[0]
+        frame = int(anno.find("filename").text.split(".")[0])
         bboxes = anno.findall("object")
         for bbox in bboxes:
             xmin = bbox.find("bndbox").find("xmin").text
@@ -1509,125 +1521,130 @@ class DatasetProcessor():
 if __name__ == '__main__':
     start_time=time.time()
     parser=argparse.ArgumentParser(description="Merger inputs config")
-    parser.add_argument("--dataset-name",default="purdue_rgb")
+    parser.add_argument("--dataset-name",type=str)
+    parser.add_argument("--img-refresh",type=bool,default=False)
+    parser.add_argument("--anno-refresh", type=bool, default=False)
     args=parser.parse_args()
 
     test_dataset=args.dataset_name
+    image_refresh_tag=args.img_refresh
+    anno_refresh_tag=args.anno_refresh
 
-    if test_dataset=="purdue_rgb":
+    if test_dataset=="purdue_rgb" or test_dataset=="all":
         dataset_path="/home/king/PycharmProjects/DataMerger/Data/PURDUE_rgb"
         d=Dataset(dataset_path,
-                  image_refresh_tag=True,
-                  anno_refresh_tag=True,
+                  image_refresh_tag=image_refresh_tag,
+                  anno_refresh_tag=anno_refresh_tag,
                   media_dir_in_root=os.path.join("Videos","Videos"),
                   anno_dir_in_root=os.path.join("Video_Annotation","Video_Annotation"),
                   anno_suffix="_gt.txt")
         DatasetProcessor.purdue_rpg_processor(dataset_object=d,dataset_name=test_dataset)
-    elif test_dataset=="real_world_rgb":
+
+    if test_dataset=="real_world_rgb" or test_dataset=="all":
         dataset_path="/home/king/PycharmProjects/DataMerger/Data/Real Word Dataset_rgb"
         d=Dataset(dataset_path,
-                  image_refresh_tag=True,
-                  anno_refresh_tag=True,
+                  image_refresh_tag=image_refresh_tag,
+                  anno_refresh_tag=anno_refresh_tag,
                   media_dir_in_root=os.path.join("DroneTrainDataset","Drone_TrainSet"),
                   anno_dir_in_root=os.path.join("DroneTrainDataset","Drone_TrainSet_XMLs"),
                   anno_suffix=".xml")
         DatasetProcessor.real_world_rgb_processor(dataset_object=d,dataset_name=test_dataset)
 
-    elif test_dataset=="anti_uav_rgbt_mix":
+    if test_dataset=="anti_uav_rgbt_mix" or test_dataset=="all":
         dataset_path = "/home/king/PycharmProjects/DataMerger/Data/Anti-UAV-RGBT_mix"
         d = Dataset(dataset_path,
-                    image_refresh_tag=True,
-                    anno_refresh_tag=True,
+                    image_refresh_tag=image_refresh_tag,
+                    anno_refresh_tag=anno_refresh_tag,
                     media_dir_in_root=["test","train","val"],
                     anno_dir_in_root=["test","train","val"],
                     anno_suffix=".json")
         DatasetProcessor.anti_uav_rgbt_mix_processor(dataset_object=d, dataset_name=test_dataset)
 
-    elif test_dataset=="anti_uav410_thermal":
+    if test_dataset=="anti_uav410_thermal" or test_dataset=="all":
         dataset_path = "/home/king/PycharmProjects/DataMerger/Data/Anti-UAV410_thermal"
         d = Dataset(dataset_path,
-                    image_refresh_tag=True,
-                    anno_refresh_tag=True,
+                    image_refresh_tag=image_refresh_tag,
+                    anno_refresh_tag=anno_refresh_tag,
                     media_dir_in_root=["test","train","val"],
                     anno_dir_in_root=["test","train","val"],
                     anno_suffix="IR_label.json")
         DatasetProcessor.anti_uav410_thermal_processor(dataset_object=d, dataset_name=test_dataset)
 
-    elif test_dataset=="jet_fly_rgb":
+    if test_dataset=="jet_fly_rgb" or test_dataset=="all":
         dataset_path = "/home/king/PycharmProjects/DataMerger/Data/Jet-Fly_rgb"
         d = Dataset(dataset_path,
-                    image_refresh_tag=True,
-                    anno_refresh_tag=True,
+                    image_refresh_tag=image_refresh_tag,
+                    anno_refresh_tag=anno_refresh_tag,
                     media_dir_in_root="JPEGImages",
                     anno_dir_in_root="Annotations",
                     anno_suffix=".xml")
         DatasetProcessor.jet_fly_rgb_processor(dataset_object=d, dataset_name=test_dataset)
 
-    elif test_dataset=="fdb_rgb":
+    if test_dataset=="fdb_rgb" or test_dataset=="all":
         dataset_path = "/home/king/PycharmProjects/DataMerger/Data/Flight Dynamics-Based Recovery of a UAV Trajectory Using Ground Cameras_rgb"
         d = Dataset(dataset_path,
-                    image_refresh_tag=True,
-                    anno_refresh_tag=True,
+                    image_refresh_tag=image_refresh_tag,
+                    anno_refresh_tag=anno_refresh_tag,
                     media_dir_in_root=os.path.join("cvpr15","cvpr15","videos"),
                     anno_dir_in_root=os.path.join("cvpr15","cvpr15","annotations"),
                     anno_suffix=".txt")
         DatasetProcessor.fdb_rgb_processor(dataset_object=d, dataset_name=test_dataset)
 
-    elif test_dataset == "youtube_rgb":
+    if test_dataset == "youtube_rgb" or test_dataset=="all":
         dataset_path = "/home/king/PycharmProjects/DataMerger/Data/youtube_rgb"
         d = Dataset(dataset_path,
-                    image_refresh_tag=True,
-                    anno_refresh_tag=True,
+                    image_refresh_tag=image_refresh_tag,
+                    anno_refresh_tag=anno_refresh_tag,
                     media_dir_in_root="image&label",
                     anno_dir_in_root="image&label",
                     anno_suffix=".mat")
         DatasetProcessor.youtube_rgb_processor(dataset_object=d, dataset_name=test_dataset)
 
-    elif test_dataset == "3rd_anti_uav_thermal":
+    if test_dataset == "3rd_anti_uav_thermal" or test_dataset=="all":
         dataset_path = "/home/king/PycharmProjects/DataMerger/Data/3rd_Anti-UAV_train_val_thermal"
         d = Dataset(dataset_path,
-                    image_refresh_tag=True,
-                    anno_refresh_tag=True,
+                    image_refresh_tag=image_refresh_tag,
+                    anno_refresh_tag=anno_refresh_tag,
                     media_dir_in_root=["train","validation"],
                     anno_dir_in_root="",
                     anno_suffix=".json")
         DatasetProcessor.third_anti_uav_thermal_processor(dataset_object=d, dataset_name=test_dataset)
 
-    elif test_dataset == "uav123_rgb":
+    if test_dataset == "uav123_rgb" or test_dataset=="all":
         dataset_path = "/home/king/PycharmProjects/DataMerger/Data/Dataset_UAV123_rgb"
         d = Dataset(dataset_path,
-                    image_refresh_tag=True,
-                    anno_refresh_tag=True,
+                    image_refresh_tag=image_refresh_tag,
+                    anno_refresh_tag=anno_refresh_tag,
                     media_dir_in_root=os.path.join("UAV123","data_seq","UAV123"),
                     anno_dir_in_root=os.path.join("UAV123","anno","UAV123"),
                     anno_suffix=".txt")
         DatasetProcessor.uav123_rgb_processor(dataset_object=d, dataset_name=test_dataset)
 
-    elif test_dataset == "ard_mav_rgb":
+    if test_dataset == "ard_mav_rgb" or test_dataset=="all":
         dataset_path = "/home/king/PycharmProjects/DataMerger/Data/ARD-MAV_rgb"
         d = Dataset(dataset_path,
-                    image_refresh_tag=True,
-                    anno_refresh_tag=True,
+                    image_refresh_tag=image_refresh_tag,
+                    anno_refresh_tag=anno_refresh_tag,
                     media_dir_in_root="videos",
                     anno_dir_in_root="Annotations",
                     anno_suffix=".xml")
         DatasetProcessor.ard_mav_rgb_processor(dataset_object=d, dataset_name=test_dataset)
 
-    elif test_dataset == "drone_dataset_uav_rgb":
+    if test_dataset == "drone_dataset_uav_rgb" or test_dataset=="all":
         dataset_path = "/home/king/PycharmProjects/DataMerger/Data/Drone-Dataset(UAV)_rgb"
         d = Dataset(dataset_path,
-                    image_refresh_tag=True,
-                    anno_refresh_tag=True,
+                    image_refresh_tag=image_refresh_tag,
+                    anno_refresh_tag=anno_refresh_tag,
                     media_dir_in_root="archive",
                     anno_dir_in_root="archive",
                     anno_suffix="")
         DatasetProcessor.drone_dataset_uav_rgb_processor(dataset_object=d, dataset_name=test_dataset)
 
-    elif test_dataset == "midgard_rgb":
+    if test_dataset == "midgard_rgb" or test_dataset=="all":
         dataset_path = "/home/king/PycharmProjects/DataMerger/Data/Midgard_rgb"
         d = Dataset(dataset_path,
-                    image_refresh_tag=True,
-                    anno_refresh_tag=True,
+                    image_refresh_tag=image_refresh_tag,
+                    anno_refresh_tag=anno_refresh_tag,
                     media_dir_in_root=os.path.join("MIDGARD","MIDGARD"),
                     anno_dir_in_root=os.path.join("MIDGARD","MIDGARD"),
                     anno_suffix=".csv")

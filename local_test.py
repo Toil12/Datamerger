@@ -1,10 +1,8 @@
-from ultralytics.data.converter import convert_coco
 
-# 转换 COCO 标注到 YOLO 格式
-convert_coco(
-    labels_dir="/home/king/PycharmProjects/DataMerger/Data/all_results/dataset_summary_2.json",  # COCO JSON 文件路径
-    save_dir="yolo_labels",                 # 输出 YOLO 格式标签目录
-    use_segments=False,                     # 是否转换实例分割（默认 False）
-)
-
-
+import re
+line="time_layer: 642 detections: (804, 884, 848, 936), (707, 0, 738, 26), (229, 520, 264, 562), "
+ds=re.findall(r"\((\d+), (\d+), (\d+), (\d+)\)", line)
+for box in ds:
+    d = list(map(int, box))
+    d = (d[1], d[0], d[3] - d[1], d[2] - d[0])
+    print(d)
