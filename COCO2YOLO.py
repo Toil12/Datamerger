@@ -118,7 +118,7 @@ names:
 if __name__ == "__main__":
     start_time=time.time()
     convert_coco_to_yolo(
-        json_path="/home/king/PycharmProjects/DataMerger/Data/all_results/dataset_summary_5.json",
+        json_path="/home/king/PycharmProjects/DataMerger/Data/all_results/dataset_summary_6.json",
         output_dir="DataYOLO"
     )
     end_time=time.time()

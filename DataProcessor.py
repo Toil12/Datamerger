@@ -68,7 +68,7 @@ class DataProcessor:
         category_tag=False
         key_mapping={"file_path":"file_name"}
 
-        for dataset in ["PURDUE_rgb","Jet-Fly_rgb"]:
+        for dataset in ["Jet-Fly_rgb"]:
             d_start_time=time.time()
             dataset_path=os.path.join(self.root_dir,dataset)
             anno_root_dir_path=os.path.join(dataset_path,"annotations_coco")

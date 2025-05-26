@@ -8,8 +8,8 @@ model = YOLO("Weights/yolov10x.pt")
 # 训练配置
 results = model.train(
     data="/home/king/PycharmProjects/DataMerger/DataYOLO/data.yaml",
-    epochs=100,
-    batch=16,
+    epochs=200,
+    batch=32,
     imgsz=640,
     device="0,1",  # GPU ID
     workers=8,
