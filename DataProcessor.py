@@ -106,23 +106,29 @@ class DataProcessor:
                             anno_c["image_id"]=new_img_id
                             anno_c["id"]=anno_id
                             anno_c["bbox"]=list(map(int,anno_c["bbox"]))
+                            # Check the empty anno
                             if len(anno_c["bbox"])==0:
                                 raise ValueError(img["file_name"]," should not be empty")
-                            if any(c>max(2*img["width"],2*img["height"]) for c in anno_c["bbox"]):
-                                position=anno_c["bbox"]
-                                file_position=img["file_name"]
-                                w=img["width"]
-                                h=img["height"]
-                                raise ValueError(f"{file_position},{position}{w,h} with oversized position")
-                            elif any(c>max(img["width"],img["height"]) for c in anno_c["bbox"]):
-                                position = anno_c["bbox"]
-                                file_position = img["file_name"]
-                                w = img["width"]
-                                h = img["height"]
-                                print(f"{file_position},{position}{w, h} with oversized position")
+
+                            # Check the annotations out of the bounds
+                            position = anno_c["bbox"]
+                            file_position = img["file_name"]
+                            w_img = img["width"]
+                            h_img = img["height"]
+                            x_min=anno_c["bbox"][0]
+                            y_min = anno_c["bbox"][1]
+                            w = anno_c["bbox"][2]
+                            h = anno_c["bbox"][3]
+                            if x_min>w_img or y_min>h_img or any(x<0 for x in position):
+                                print(f"{file_position},{position}{w_img,h_img} with wrong position")
                                 continue
+                            elif (x_min+w)>(w_img+2) or (y_min+h)>(h_img+2):
+                                print(f"{file_position},{position}{w_img,h_img} with oversized position")
+                                continue
+                            else:
+                                pass
+
                             # Delete the empty annotations
-                            # TODO cheche this filter
                             if anno_c["bbox"]==[0,0,0,0] or anno_c["bbox"]==[]:
                                 continue
                             img["related_anno"].append(anno_id)
