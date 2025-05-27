@@ -3,6 +3,8 @@ from ultralytics import YOLO
 # 加载模型（YOLOv10 官方或自定义模型）
 # model = YOLO("yolov10n.yaml")  # 从YAML构建
 # 或加载预训练权重
+
+
 model = YOLO("Weights/yolov10x.pt")
 
 # 训练配置

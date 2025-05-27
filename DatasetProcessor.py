@@ -112,7 +112,7 @@ class DatasetProcessor():
         elif dataset_name=="anti_uav_rgbt_mix":
             return DatasetProcessor.anti_uav_rgbt_mix_anno_processor(anno,info,mode)
         elif dataset_name=="anti_uav410_thermal":
-            return DatasetProcessor.anti_uav410_thermal_anno_processor(anno,info,mode)
+            return DatasetProcessor.anti_uav410_thermal_anno_processor(anno,info,mode,kwargs["idx"])
         elif dataset_name=="jet_fly_rgb":
             return DatasetProcessor.jet_fly_rgb_anno_processor(anno,info,mode)
         elif dataset_name=="fdb_rgb":
@@ -120,7 +120,7 @@ class DatasetProcessor():
         elif dataset_name=="youtube_rgb":
             return DatasetProcessor.youtube_rgb_anno_processor(anno,info,mode,kwargs["idx"])
         elif dataset_name=="3rd_anti_uav_thermal":
-            return DatasetProcessor.third_anti_uav_thermal_anno_processor(anno,info,mode,kwargs["json_tag"])
+            return DatasetProcessor.third_anti_uav_thermal_anno_processor(anno,info,mode,kwargs["idx"])
         elif dataset_name == "uav123_rgb":
             return DatasetProcessor.uav123_rgb_anno_processor(anno, info, mode, kwargs["idx"])
         elif dataset_name == "ard_mav_rgb":
@@ -250,30 +250,29 @@ class DatasetProcessor():
         """
         if ffmpeg_dict is None:
             ffmpeg_dict = DEFAULT_FFMPEG_DICT
+
         images_list, _ = DataReader.get_media_list(dataset_object.media_root_path)
         # Start loop for each video
         img_id_count = 1
         anno_id_count = 1
-        anno_output_dir_path = ""
+        images_output_dir_path = os.path.join(
+            dataset_object.images_output_root_path,
+            "DroneTrainDataset"
+        )
+        anno_output_dir_path = os.path.join(
+            dataset_object.anno_output_root_path,
+            "DroneTrainDataset")
+        tools.create_dir_if_not_exists(images_output_dir_path)
+        tools.create_dir_if_not_exists(anno_output_dir_path)
         #TODO continue the change
         for idx,image in enumerate(images_list):
             image_name, image_path, anno_path, _, _, image_info = DatasetProcessor.out_put_initialization(
                 dataset_object, image,image_single_dir=True)
             # Refresh the images if necessary
-            images_output_dir_path = os.path.join(
-                dataset_object.images_output_root_path,
-                "DroneTestDataset"
-            )
-            anno_output_dir_path = os.path.join(
-                dataset_object.anno_output_root_path,
-                "DroneTestDataset")
-            tools.create_dir_if_not_exists(images_output_dir_path)
-            tools.create_dir_if_not_exists(anno_output_dir_path)
             if dataset_object.image_refresh_tag:
                 tools.image_copy(image_path, images_output_dir_path)
             else:
                 print(f"Image Refresh tag is False, {dataset_path} skip image processing.")
-
             # Refresh the annotations if necessary
             if dataset_object.anno_refresh_tag:
                 anno = DataReader.get_xml_file(anno_path)
@@ -466,6 +465,7 @@ class DatasetProcessor():
             for media_dir in media_dir_list:
                 anno_dir = media_dir
                 anno_direct_dir_path = os.path.join(dataset_object.anno_output_root_path,media_root_dir, anno_dir)
+                anno = DataReader.get_json_anno(os.path.join(anno_direct_dir_path, dataset_object.anno_suffix))
                 media_direct_dir_path = os.path.join(dataset_object.anno_output_root_path,media_root_dir, media_dir)
                 images_list, _ = DataReader.get_media_list(media_direct_dir_path)
                 images_list = sorted(images_list,key=lambda x:int(x.split(".")[0]))
@@ -498,10 +498,10 @@ class DatasetProcessor():
                     # Refresh the annotations if necessary
 
                     if dataset_object.anno_refresh_tag:
-                        anno = DataReader.get_json_anno(os.path.join(anno_direct_dir_path,dataset_object.anno_suffix))
+
                         # Put all annotations in a dict according to the dataset name
                         anno_all_dict = DatasetProcessor.anno_processor_entry(anno, dataset_name=dataset_name,
-                                                                              info=image_info)
+                                                                              info=image_info,idx=idx)
                         # Start processing annotations
                         # Add image info to the annotations file.
                         image_dict = {
@@ -542,27 +542,21 @@ class DatasetProcessor():
 
 
     @staticmethod
-    def anti_uav410_thermal_anno_processor(anno, info: dict, mode: str = "pixel") -> dict:
+    def anti_uav410_thermal_anno_processor(anno, info: dict, mode: str,idx:int) -> dict:
         results = {}
         detections = []
-        frame_exist_list = anno["exist"]
-        rects_list = anno["gt_rect"]
-
-        for idx, existence in enumerate(frame_exist_list):
+        if anno["exist"][idx]:
             frame = idx + 1
-            rect = rects_list[idx]
-            if not existence:
-                continue
-            else:
-                xmin = rect[0]
-                ymin = rect[1]
-                w = rect[2]
-                h = rect[3]
-                d = (int(xmin), int(ymin), w, h)
-                detections.append(
-                    DatasetProcessor.output_form(d, info["width"], info["height"], mode)
-                )
-                results[frame] = detections
+            rect = anno["gt_rect"][idx]
+            xmin = int(rect[0])
+            ymin = int(rect[1])
+            w = int(rect[2])
+            h = int(rect[3])
+            d = (xmin, ymin, w, h)
+            detections.append(
+                DatasetProcessor.output_form(d, info["width"], info["height"], mode)
+            )
+            results[frame] = detections
         return results
 
     @staticmethod
@@ -907,16 +901,17 @@ class DatasetProcessor():
         if ffmpeg_dict is None:
             ffmpeg_dict = DEFAULT_FFMPEG_DICT
 
-        media_dir_list = DataReader.get_media_dir_list(dataset_object.media_root_path)
-        for media_root_dir in media_dir_list:
+
+        for media_root_dir in dataset_object.media_dir_in_root:
             media_dir_list = DataReader.get_media_dir_list(os.path.join(dataset_object.dataset_path,media_root_dir))
             # For each video
             # print(os.path.join(dataset_object.dataset_path,
             #              media_root_dir + dataset_object.anno_suffix))
-            anno_path=os.path.join(dataset_object.dataset_path,media_root_dir+dataset_object.anno_suffix)
-            anno = DataReader.get_json_anno(anno_path)
             for media_dir in media_dir_list:
-                media_direct_dir_path = os.path.join(dataset_object.media_root_path,media_root_dir, media_dir)
+                anno_path = os.path.join(dataset_object.dataset_path, media_root_dir, media_dir,"IR_label"+dataset_object.anno_suffix)
+                anno = DataReader.get_json_anno(anno_path)
+
+                media_direct_dir_path = os.path.join(dataset_object.dataset_path,media_root_dir, media_dir)
                 images_list, _ = DataReader.get_media_list(media_direct_dir_path)
                 images_list = sorted(images_list,key=lambda x:int(x.split(".")[0]))
 
@@ -948,9 +943,9 @@ class DatasetProcessor():
                     # Refresh the annotations if necessary
                     if dataset_object.anno_refresh_tag:
                         # Put all annotations in a dict according to the dataset name
-                        json_tag=os.path.join(media_dir,image)
                         anno_all_dict = DatasetProcessor.anno_processor_entry(anno, dataset_name=dataset_name,
-                                                                              info=image_info,json_tag=json_tag)
+                                                                              info=image_info, idx=idx)
+                        json_tag=os.path.join(media_dir,image)
                         # Start processing annotations
                         # Add image info to the annotations file.
                         image_dict = {
@@ -962,11 +957,12 @@ class DatasetProcessor():
                             "video_id": -1,
                             "data_type": dataset_object.dataset_type
                         }
-                        dataset_object.coco_anno_dict["images"].append(image_dict)
-                        img_id_count += 1
 
                         if image_dict["frame_id"] not in anno_all_dict.keys():
                             continue
+                        dataset_object.coco_anno_dict["images"].append(image_dict)
+                        img_id_count += 1
+
                         for bboxes in anno_all_dict[image_dict["frame_id"]]:
                             anno_dict = {
                                 "id": int(anno_id_count),
@@ -988,41 +984,23 @@ class DatasetProcessor():
                     json.dump(dataset_object.coco_anno_dict, f, indent=4)
                 dataset_object.reset_coco()
 
-
-
     @staticmethod
-    def third_anti_uav_thermal_anno_processor(anno, info: dict,mode: str = "pixel",  json_tag:str=None) -> dict:
+    def third_anti_uav_thermal_anno_processor(anno, info: dict,mode: str,  idx:int) -> dict:
+        # Single image with single annotation
         results = {}
         detections = []
-        #
-        frame=int(os.path.basename(json_tag).split(".")[0])
-        img_id=-1
-        for img in anno["images"]:
-            if img["file_name"] == json_tag:
-                img_id=img["id"]
-                break
-
-        if img_id==-1:
-            raise ValueError(f"Image {json_tag} not found in annotation file.")
-
-        search_count=0
-        for a in anno["annotations"]:
-            if a["image_id"]==img_id:
-                rect=a["bbox"]
-                xmin=rect[0]
-                ymin=rect[1]
-                w=rect[2]
-                h=rect[3]
-                d=((xmin),(ymin),w,h)
-                detections.append(
-                    DatasetProcessor.output_form(d, info["width"], info["height"], mode)
-                )
-                search_count+=1
-            elif search_count>0:
-                break
-            else:
-                pass
-        results[frame] = detections
+        if anno["exist"][idx]:
+            frame = idx + 1
+            rect = anno["gt_rect"][idx]
+            xmin = int(rect[0])
+            ymin = int(rect[1])
+            w = int(rect[2])
+            h = int(rect[3])
+            d = (xmin, ymin, w, h)
+            detections.append(
+                DatasetProcessor.output_form(d, info["width"], info["height"], mode)
+            )
+            results[frame] = detections
         return results
 
     @staticmethod
@@ -1100,11 +1078,10 @@ class DatasetProcessor():
                         "video_id": -1,
                         "data_type": dataset_object.dataset_type
                     }
-                    dataset_object.coco_anno_dict["images"].append(image_dict)
-                    img_id_count += 1
-
                     if image_dict["frame_id"] not in anno_all_dict.keys():
                         continue
+                    dataset_object.coco_anno_dict["images"].append(image_dict)
+                    img_id_count += 1
                     for bboxes in anno_all_dict[image_dict["frame_id"]]:
                         anno_dict = {
                             "id": int(anno_id_count),
@@ -1196,11 +1173,10 @@ class DatasetProcessor():
                         "video_id": video_name,
                         "data_type": dataset_object.dataset_type
                     }
-                    dataset_object.coco_anno_dict["images"].append(image_dict)
-                    img_id_count += 1
-
                     if image_dict["frame_id"] not in anno_all_dict.keys():
                         continue
+                    dataset_object.coco_anno_dict["images"].append(image_dict)
+                    img_id_count += 1
                     for bboxes in anno_all_dict[image_dict["frame_id"]]:
                         anno_dict = {
                             "id": int(anno_id_count),
@@ -1472,11 +1448,12 @@ class DatasetProcessor():
                             "video_id": -1,
                             "data_type": dataset_object.dataset_type
                         }
-                        dataset_object.coco_anno_dict["images"].append(image_dict)
-                        img_id_count += 1
+
 
                         if image_dict["frame_id"] not in anno_all_dict.keys():
                             continue
+                        dataset_object.coco_anno_dict["images"].append(image_dict)
+                        img_id_count += 1
                         for bboxes in anno_all_dict[image_dict["frame_id"]]:
                             anno_dict = {
                                 "id": int(anno_id_count),
@@ -1526,9 +1503,13 @@ if __name__ == '__main__':
     parser.add_argument("--anno-refresh", type=bool, default=False)
     args=parser.parse_args()
 
-    test_dataset=args.dataset_name
-    image_refresh_tag=args.img_refresh
-    anno_refresh_tag=args.anno_refresh
+    # test_dataset=args.dataset_name
+    # image_refresh_tag=args.img_refresh
+    # anno_refresh_tag=args.anno_refresh
+
+    test_dataset = "anti_uav410_thermal"
+    image_refresh_tag = False
+    anno_refresh_tag = True
 
     if test_dataset=="purdue_rgb" or test_dataset=="all":
         dataset_path="/home/king/PycharmProjects/DataMerger/Data/PURDUE_rgb"

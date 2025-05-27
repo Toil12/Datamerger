@@ -68,7 +68,7 @@ class DataProcessor:
         category_tag=False
         key_mapping={"file_path":"file_name"}
 
-        for dataset in ["Jet-Fly_rgb"]:
+        for dataset in self.dataset_list:
             d_start_time=time.time()
             dataset_path=os.path.join(self.root_dir,dataset)
             anno_root_dir_path=os.path.join(dataset_path,"annotations_coco")
@@ -108,9 +108,19 @@ class DataProcessor:
                             anno_c["bbox"]=list(map(int,anno_c["bbox"]))
                             if len(anno_c["bbox"])==0:
                                 raise ValueError(img["file_name"]," should not be empty")
-                            if any(c>max(img["width"],img["height"]) for c in anno_c["bbox"]):
+                            if any(c>max(2*img["width"],2*img["height"]) for c in anno_c["bbox"]):
                                 position=anno_c["bbox"]
-                                raise ValueError(f"{position} with oversized position")
+                                file_position=img["file_name"]
+                                w=img["width"]
+                                h=img["height"]
+                                raise ValueError(f"{file_position},{position}{w,h} with oversized position")
+                            elif any(c>max(img["width"],img["height"]) for c in anno_c["bbox"]):
+                                position = anno_c["bbox"]
+                                file_position = img["file_name"]
+                                w = img["width"]
+                                h = img["height"]
+                                print(f"{file_position},{position}{w, h} with oversized position")
+                                continue
                             # Delete the empty annotations
                             # TODO cheche this filter
                             if anno_c["bbox"]==[0,0,0,0] or anno_c["bbox"]==[]:
@@ -135,9 +145,9 @@ class DataProcessor:
             json.dump(self.results_summary_json,f,ensure_ascii=False,indent=4)
         end_time=time.time()
         print(f"Get final annotations in {results_json_file_path} with {end_time-start_time} s")
-
+        return results_json_file_name
 
 if __name__ == '__main__':
     processor=DataProcessor()
     processor.fetch_all_data_info()
-    processor.all_dataset_summarization()
+    output_file_name=processor.all_dataset_summarization()
